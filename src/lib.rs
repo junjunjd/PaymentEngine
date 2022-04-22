@@ -168,7 +168,7 @@ impl Account {
                 }
             },
 
-            None => warn!(
+            None => debug!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this dispute. Either the tx specified by the dispute doesn't exist or the specified tx is not a deposit. This dispute request is ignored.",
                 data.tx, data.client),
         }
@@ -200,7 +200,7 @@ impl Account {
                             ),
                 }
             },
-            None => warn!(
+            None => debug!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this resolve. Either the tx specified by the resolve doesn't exist or the specified tx is not a deposit. This resolve request is ignored.",
                 data.tx, data.client),
         }
@@ -233,7 +233,7 @@ impl Account {
                             ),
                 }
             },
-            None => warn!(
+            None => debug!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this chargeback. Either the tx specified by the chargeback doesn't exist or the specified tx is not a deposit. This chargeback request is ignored.",
                 data.tx, data.client),
         }
