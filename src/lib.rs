@@ -1,6 +1,6 @@
 use csv::Error;
 use csv::StringRecord;
-use log::{debug, info};
+use log::{debug, error, info};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,16 +16,26 @@ pub struct Transaction {
 }
 
 #[derive(PartialEq, Eq, Serialize, Debug)]
+pub enum DepositState {
+    NotDisputed,
+    Disputed,
+    Chargebacked,
+    // The engine assumes that a client can dispute a transaction that's already been disputed and resolved.
+    // The engine will ignore a transaction dispute that's already under dispute.
+    // Once a dispute's been chargebacked, no further dispute can be made against the transaction.
+}
+
+#[derive(PartialEq, Eq, Serialize, Debug)]
 pub struct Deposit {
     amount: Decimal,
-    disputed: bool,
+    state: DepositState,
 }
 
 impl Deposit {
     pub fn new(deposited_amount: Decimal) -> Self {
         Self {
             amount: deposited_amount,
-            disputed: false,
+            state: DepositState::NotDisputed,
         }
     }
 }
@@ -68,16 +78,10 @@ impl Account {
                         );
                 } else {
                     let mut deposit_amount: Decimal = value;
-                    if deposit_amount.scale() > 4 {
-                        debug!(
-                            "Transaction #{}: Client #{}. Deposit amount has a precision more than four places. The amount is rescaled to a precision of up to four places.",
-                            data.tx, data.client
-                            );
-                        deposit_amount.rescale(4);
-                    };
+                    deposit_amount.rescale(4);
 
-                    // Since held will always be non-negative, available will always be
-                    // smaller than or equal to total. Thus, if adding the deposit amount
+                    // Since held will always be non-negative, total will always be
+                    // greater than or equal to available. Thus, if adding the deposit amount
                     // to total doesn't cause overflow, adding the same amount to
                     // available will not cause overflow.
                     match self.total.checked_add(deposit_amount) {
@@ -86,11 +90,11 @@ impl Account {
                             self.available = self.available + deposit_amount;
 
                             // According to the specification, transaction IDs are globally unique. If the same deposit
-                            // transaction ID appears more than once, the engine will keep records of the transaction that appears most
+                            // transaction ID appears more than once, the deposited hashmap will only keep the transaction that appears most
                             // recently.
                             self.deposited.insert(data.tx, Deposit::new(deposit_amount));
                         },
-                        None => info!(
+                        None => error!(
                             "Transaction #{}: Client #{}. Total amount overflowed. Deposit is not processed.",
                             data.tx, data.client
                             ),
@@ -119,13 +123,7 @@ impl Account {
                         );
                 } else {
                     let mut withdrawl_amount: Decimal = value;
-                    if withdrawl_amount.scale() > 4 {
-                        debug!(
-                            "Transaction #{}: Client #{}. Withdrawl amount has a precision more than four places. The amount is rescaled to a precision of up to four places.",
-                            data.tx, data.client
-                            );
-                        withdrawl_amount.rescale(4);
-                    };
+                    withdrawl_amount.rescale(4);
 
                     if self.available < withdrawl_amount {
                         info!(
@@ -149,20 +147,29 @@ impl Account {
     pub fn dispute(&mut self, data: &Transaction) {
         match self.deposited.get_mut(&data.tx) {
             Some(deposited) => {
-                if deposited.disputed {
-                    debug!(
-                        "Transaction #{}: Client #{}. Transaction is already under dispute.",
-                        data.tx, data.client
-                        );
-                } else {
-                    self.available = self.available - deposited.amount;
-                    self.held = self.held + deposited.amount;
-                    deposited.disputed = true;
+                match deposited.state {
+                    DepositState::Chargebacked =>
+                        // Check if the tx has been chargebacked. Once a tx's been chargebacked and reversed, no dispute can be made to the tx.
+                        debug!(
+                            "Transaction #{}: Client #{}. Transaction has already been chargebacked. This dispute request is ignored. ",
+                            data.tx, data.client
+                            ),
+                    DepositState::Disputed =>
+                        // Check if the tx is already under dispute. If so, ignore this dispute.
+                        debug!(
+                            "Transaction #{}: Client #{}. Transaction is already under dispute. This dispute request is ignored",
+                            data.tx, data.client
+                            ),
+                    DepositState::NotDisputed => {
+                        self.available = self.available - deposited.amount;
+                        self.held = self.held + deposited.amount;
+                        deposited.state = DepositState::Disputed;
+                    },
                 }
             },
 
             None => info!(
-                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this dispute. Either the tx specified by the dispute doesn't exist or the specified tx is not a deposit. Dispute is ignored.",
+                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this dispute. Either the tx specified by the dispute doesn't exist or the specified tx is not a deposit. This dispute request is ignored.",
                 data.tx, data.client),
         }
     }
@@ -170,22 +177,32 @@ impl Account {
     pub fn resolve(&mut self, data: &Transaction) {
         match self.deposited.get_mut(&data.tx) {
             Some(deposited) => {
-                // check if the tx is under dispute. If not, ignore the resolve.
-                if deposited.disputed {
-                    self.available = self.available + deposited.amount;
-                    self.held = self.held - deposited.amount;
-                    // Dispute is considered resolved. The "disputed" boolean field
-                    // now updates to false.
-                    deposited.disputed = false;
-                } else {
-                    info!(
-                        "Transaction #{}: Client #{}. Transaction is not under dispute. Resolve is ignored.",
-                        data.tx, data.client
-                        );
+                match deposited.state {
+                    DepositState::Chargebacked =>
+                        // Check if the tx has been chargebacked. Once a tx's been chargebacked and reversed, no dispute can be made to the tx.
+                        debug!(
+                            "Transaction #{}: Client #{}. Transaction has already been chargebacked. This resolve request is ignored. ",
+                            data.tx, data.client
+                            ),
+                    DepositState::Disputed => {
+                        // check if the tx is under dispute. If not, ignore the resolve.
+                        self.available = self.available + deposited.amount;
+                        self.held = self.held - deposited.amount;
+                        // Dispute is considered resolved. The state of the Deposit struct now updated to
+                        // NotDisputed.
+                        // The engine assumes that a client can dispute a transaction that's already
+                        // been disputed and resolved.
+                        deposited.state = DepositState::NotDisputed;
+                    },
+                    DepositState::NotDisputed =>
+                        info!(
+                            "Transaction #{}: Client #{}. Transaction is not under dispute. This resolve request is ignored.",
+                            data.tx, data.client
+                            ),
                 }
             },
             None => info!(
-                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this resolve. Either the tx specified by the resolve doesn't exist or the specified tx is not a deposit. Resolve is ignored.",
+                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this resolve. Either the tx specified by the resolve doesn't exist or the specified tx is not a deposit. This resolve request is ignored.",
                 data.tx, data.client),
         }
     }
@@ -193,24 +210,32 @@ impl Account {
     pub fn chargeback(&mut self, data: &Transaction) {
         match self.deposited.get_mut(&data.tx) {
             Some(deposited) => {
-                // check if the tx is under dispute. If not, ignore the chargeback.
-                if deposited.disputed {
-                    self.held = self.held - deposited.amount;
-                    self.total = self.total - deposited.amount;
-                    // A chargeback is the final state of a dispute. The "disputed" boolean field
-                    // now updates to false.
-                    deposited.disputed = false;
-                    // Once a chargeback occurs, the client's account should be immediately frozen.
-                    self.locked = true;
-                } else {
-                    info!(
-                        "Transaction #{}: Client #{}. Transaction is not under dispute. Chargeback is ignored.",
-                        data.tx, data.client
-                        );
+                match deposited.state {
+                    DepositState::Chargebacked =>
+                        // Check if the tx has been chargebacked. Once a tx's been chargebacked and reversed, no dispute can be made to the tx.
+                        debug!(
+                            "Transaction #{}: Client #{}. Transaction has already been chargebacked. This chargeback request is ignored. ",
+                            data.tx, data.client
+                            ),
+                    DepositState::Disputed => {
+                        // check if the tx is under dispute. If not, ignore the chargeback.
+                        self.held = self.held - deposited.amount;
+                        self.total = self.total - deposited.amount;
+                        // A chargeback is the final state of a dispute. The state of the Deposit struct now updated to Chargebacked.
+                        deposited.state = DepositState::Chargebacked;
+
+                        // Once a chargeback occurs, the client's account should be immediately frozen.
+                        self.locked = true;
+                    },
+                    DepositState::NotDisputed =>
+                        info!(
+                            "Transaction #{}: Client #{}. Transaction is not under dispute. This chargeback request is ignored.",
+                            data.tx, data.client
+                            ),
                 }
             },
             None => info!(
-                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this chargeback. Either the tx specified by the chargeback doesn't exist or the specified tx is not a deposit. Chargeback is ignored.",
+                "transaction #{}: Client #{}. Cannot find the deposit transaction related to this chargeback. Either the tx specified by the chargeback doesn't exist or the specified tx is not a deposit. This chargeback request is ignored.",
                 data.tx, data.client),
         }
     }
@@ -223,7 +248,7 @@ impl Account {
             "resolve" => self.resolve(data),
             "chargeback" => self.chargeback(data),
             _ => info!(
-                "transaction #{}: Client #{}. Transaction type is not specified. Transaction is ignored.",
+                "transaction #{}: Client #{}. Transaction type is not specified. This transaction is ignored.",
                 data.tx, data.client
                 ),
         }
@@ -267,8 +292,89 @@ mod tests {
     use std::fs::File;
 
     #[test]
+    fn test_deposit() -> Result<(), Error> {
+        let test_file_path = "test_data1.csv";
+        let test_rdr = File::open(test_file_path)?;
+        let test_accounts = process_records(test_rdr)?;
+        let client = Account {
+            client: 65535,
+            available: dec!(1000000000000.0000),
+            held: Decimal::ZERO,
+            total: dec!(1000000000000.0000),
+            locked: false,
+            deposited: HashMap::from([
+                (
+                    4294967292,
+                    Deposit {
+                        amount: dec!(999999999999.9999),
+                        state: DepositState::NotDisputed,
+                    },
+                ),
+                (
+                    4294967293,
+                    Deposit {
+                        amount: dec!(0.0001),
+                        state: DepositState::NotDisputed,
+                    },
+                ),
+            ]),
+        };
+
+        assert_eq!(*test_accounts.get(&65535).unwrap(), client);
+        Ok(())
+    }
+
+    #[test]
+    fn test_withdrawl() -> Result<(), Error> {
+        let test_file_path = "test_data2.csv";
+        let test_rdr = File::open(test_file_path)?;
+        let test_accounts = process_records(test_rdr)?;
+        let client1 = Account {
+            client: 65535,
+            available: dec!(999999999999.9999),
+            held: Decimal::ZERO,
+            total: dec!(999999999999.9999),
+            locked: false,
+            deposited: HashMap::from([
+                (
+                    4294967292,
+                    Deposit {
+                        amount: dec!(999999999999.9999),
+                        state: DepositState::NotDisputed,
+                    },
+                ),
+                (
+                    4294967293,
+                    Deposit {
+                        amount: dec!(0.0001),
+                        state: DepositState::NotDisputed,
+                    },
+                ),
+            ]),
+        };
+        let client2 = Account {
+            client: 65534,
+            available: dec!(999999999999.9999),
+            held: dec!(0),
+            total: dec!(999999999999.9999),
+            locked: false,
+            deposited: HashMap::from([(
+                4294967291,
+                Deposit {
+                    amount: dec!(1000000000000.0000),
+                    state: DepositState::NotDisputed,
+                },
+            )]),
+        };
+
+        assert_eq!(*test_accounts.get(&65535).unwrap(), client1);
+        assert_eq!(*test_accounts.get(&65534).unwrap(), client2);
+        Ok(())
+    }
+
+    #[test]
     fn test_process_records() -> Result<(), Error> {
-        let test_file_path = "test_data.csv";
+        let test_file_path = "test_data3.csv";
         let test_rdr = File::open(test_file_path)?;
         let test_accounts = process_records(test_rdr)?;
         let client1 = Account {
@@ -282,14 +388,14 @@ mod tests {
                     1,
                     Deposit {
                         amount: dec!(1),
-                        disputed: false,
+                        state: DepositState::Chargebacked,
                     },
                 ),
                 (
                     3,
                     Deposit {
                         amount: dec!(2),
-                        disputed: false,
+                        state: DepositState::Chargebacked,
                     },
                 ),
             ]),
@@ -304,17 +410,23 @@ mod tests {
                 2,
                 Deposit {
                     amount: dec!(2),
-                    disputed: false,
+                    state: DepositState::Chargebacked,
                 },
             )]),
         };
         let client3 = Account {
             client: 3,
-            available: dec!(0),
+            available: dec!(1000),
             held: dec!(0),
-            total: dec!(0),
+            total: dec!(1000),
             locked: false,
-            deposited: HashMap::new(),
+            deposited: HashMap::from([(
+                8,
+                Deposit {
+                    amount: dec!(1000),
+                    state: DepositState::NotDisputed,
+                },
+            )]),
         };
 
         assert_eq!(*test_accounts.get(&1).unwrap(), client1);

@@ -3,6 +3,10 @@ name = "payment_engine"
 version = "0.1.0"
 authors = ["Junjun Dong <junjun.dong9@gmail.com>"]
 edition = "2018"
+description = "A payments engine that reads transactions, updates client accounts, handles disputes and chargebacks, and then outputs the state of clients accounts"
+license-file = "LICENSE.md"
+homepage = "https://github.com/junjunjd/PaymentEngine"
+repository = "https://github.com/junjunjd/PaymentEngine"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
