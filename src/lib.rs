@@ -355,7 +355,7 @@ mod tests {
         let client65534 = Account {
             client: 65534,
             available: dec!(999999999999.9999),
-            held: dec!(0),
+            held: Decimal::ZERO,
             total: dec!(999999999999.9999),
             locked: false,
             deposited: HashMap::from([(
@@ -379,22 +379,22 @@ mod tests {
         let test_accounts = process_records(test_rdr)?;
         let client1 = Account {
             client: 1,
-            available: dec!(-1.5),
-            held: dec!(0),
-            total: dec!(-1.5),
+            available: dec!(-1.5000),
+            held: Decimal::ZERO,
+            total: dec!(-1.5000),
             locked: true,
             deposited: HashMap::from([
                 (
                     1,
                     Deposit {
-                        amount: dec!(1),
+                        amount: dec!(1.0000),
                         state: DepositState::Chargebacked,
                     },
                 ),
                 (
                     3,
                     Deposit {
-                        amount: dec!(2),
+                        amount: dec!(2.0000),
                         state: DepositState::Chargebacked,
                     },
                 ),
@@ -402,29 +402,29 @@ mod tests {
         };
         let client2 = Account {
             client: 2,
-            available: dec!(0),
-            held: dec!(0),
-            total: dec!(0),
+            available: Decimal::ZERO,
+            held: Decimal::ZERO,
+            total: Decimal::ZERO,
             locked: true,
             deposited: HashMap::from([(
                 2,
                 Deposit {
-                    amount: dec!(2),
+                    amount: dec!(2.0000),
                     state: DepositState::Chargebacked,
                 },
             )]),
         };
         let client3 = Account {
             client: 3,
-            available: dec!(1000),
-            held: dec!(0),
-            total: dec!(1000),
+            available: Decimal::ZERO,
+            held: dec!(1000.0000),
+            total: dec!(1000.0000),
             locked: false,
             deposited: HashMap::from([(
                 8,
                 Deposit {
-                    amount: dec!(1000),
-                    state: DepositState::NotDisputed,
+                    amount: dec!(1000.0000),
+                    state: DepositState::Disputed,
                 },
             )]),
         };
