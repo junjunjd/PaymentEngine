@@ -1,6 +1,6 @@
 # PaymentEngine
 
-PaymentEngine is toy engine written in pure Rust that reads transactions from a CSV, updates client accounts, handles disputes and chargebacks, and then outputs the state of clients accounts as a CSV.
+PaymentEngine is a toy engine written in pure Rust that reads transactions from a CSV, updates client accounts, handles disputes and chargebacks, and then outputs the state of clients accounts as a CSV.
 
 CSV rows are streamed through structs that implement the Read trait without loading the entire data set upfront in memory. This means that the `process_records` function that processes the transaction data is agnostic to concrete data sources which can be CSV files or TCP streams.
 
