@@ -18,7 +18,7 @@ Once an account's been locked, no deposit or withdrawl can be made to that accou
 ### Dispute, resolve and chargeback
 The payment engine assumes that the dispute, resolve and chargeback are all sent from credit card issuers. Therefore,
 - a dispute will only reference a deposit transaction. From the perspective of a credit card issuer, it does not make much sense to dispute a money that has already been credited to the card. Thus, when handling dispute, the engine will only search for the specified tx in previous deposit transactions.
-- the engine assumes that a client can dispute a transaction that has already been disputed and resolved. The engine will ignore a dispute when the corresponding transaction is already under dispute. Once a transaction has been chargebacked, no further dispute can be made against the transaction.
+- the engine assumes that a client can dispute a transaction that has already been disputed and resolved. The engine will ignore a dispute when the corresponding transaction is already under dispute. Once a transaction has been chargebacked, no dispute/resolve/chargeback can be made against the transaction.
 - a dispute, resolve or chargeback can occur after an account has been locked. Suppose that a dispute has been made against a locked account. The tx specified by the dipute had happened before the account has been locked. The engine will process the dispute the same way it will do to an unlocked account.
 
 ## Getting Started

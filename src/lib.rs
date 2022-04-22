@@ -21,7 +21,7 @@ pub enum DepositState {
     Disputed,
     Chargebacked,
     // The engine assumes that a client can dispute a transaction that's already been disputed and resolved.
-    // The engine will ignore a transaction dispute that's already under dispute.
+    // The engine will ignore a dispute when the corresponding transaction is already under dispute.
     // Once a transaction's been chargebacked, no further dispute/resolve/chargeback can be made against the transaction.
 }
 
