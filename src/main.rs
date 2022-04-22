@@ -22,6 +22,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let rdr = File::open(path)?;
     let bufrdr = BufReader::new(rdr);
     let mut writer = csv::Writer::from_writer(io::stdout());
+    // CSV rows are streamed through structs that implement the Read trait without loading the entire data set upfront in memory.
+    // The process_records function is agnostic to concrete data sources which can be CSV files or TCP streams.
     let accounts = process_records(bufrdr)?;
     for (_, val) in &accounts {
         writer.serialize(val)?;

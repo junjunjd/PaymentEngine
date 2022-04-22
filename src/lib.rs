@@ -22,7 +22,7 @@ pub enum DepositState {
     Chargebacked,
     // The engine assumes that a client can dispute a transaction that's already been disputed and resolved.
     // The engine will ignore a transaction dispute that's already under dispute.
-    // Once a dispute's been chargebacked, no further dispute can be made against the transaction.
+    // Once a transaction's been chargebacked, no further dispute/resolve/chargeback can be made against the transaction.
 }
 
 #[derive(PartialEq, Eq, Serialize, Debug)]
@@ -90,7 +90,7 @@ impl Account {
                             self.available = self.available + deposit_amount;
 
                             // According to the specification, transaction IDs are globally unique. If the same deposit
-                            // transaction ID appears more than once, the deposited hashmap will only keep the transaction that appears most
+                            // transaction ID appears more than once, the deposited hashmap will only keep the transaction that appeared most
                             // recently.
                             self.deposited.insert(data.tx, Deposit::new(deposit_amount));
                         },
@@ -188,8 +188,7 @@ impl Account {
                         // check if the tx is under dispute. If not, ignore the resolve.
                         self.available = self.available + deposited.amount;
                         self.held = self.held - deposited.amount;
-                        // Dispute is considered resolved. The state of the Deposit struct now updated to
-                        // NotDisputed.
+                        // Dispute is considered resolved. The state field now updated to NotDisputed.
                         // The engine assumes that a client can dispute a transaction that's already
                         // been disputed and resolved.
                         deposited.state = DepositState::NotDisputed;
@@ -221,7 +220,7 @@ impl Account {
                         // check if the tx is under dispute. If not, ignore the chargeback.
                         self.held = self.held - deposited.amount;
                         self.total = self.total - deposited.amount;
-                        // A chargeback is the final state of a dispute. The state of the Deposit struct now updated to Chargebacked.
+                        // A chargeback is the final state of a dispute. The state field now updated to Chargebacked.
                         deposited.state = DepositState::Chargebacked;
 
                         // Once a chargeback occurs, the client's account should be immediately frozen.
@@ -274,6 +273,7 @@ pub fn process_records<R: io::Read>(rdr: R) -> Result<HashMap<u16, Account>, Err
                 value.update(&transaction);
             }
             None => {
+                // Transactions reference clients. If a client doesn't exist create a new account record.
                 let mut accountnew = Account::new(transaction.client);
                 accountnew.update(&transaction);
                 account_map.insert(transaction.client, accountnew);
@@ -296,7 +296,7 @@ mod tests {
         let test_file_path = "test_data1.csv";
         let test_rdr = File::open(test_file_path)?;
         let test_accounts = process_records(test_rdr)?;
-        let client = Account {
+        let client65535 = Account {
             client: 65535,
             available: dec!(1000000000000.0000),
             held: Decimal::ZERO,
@@ -320,7 +320,7 @@ mod tests {
             ]),
         };
 
-        assert_eq!(*test_accounts.get(&65535).unwrap(), client);
+        assert_eq!(*test_accounts.get(&65535).unwrap(), client65535);
         Ok(())
     }
 
@@ -329,7 +329,7 @@ mod tests {
         let test_file_path = "test_data2.csv";
         let test_rdr = File::open(test_file_path)?;
         let test_accounts = process_records(test_rdr)?;
-        let client1 = Account {
+        let client65535 = Account {
             client: 65535,
             available: dec!(999999999999.9999),
             held: Decimal::ZERO,
@@ -352,7 +352,7 @@ mod tests {
                 ),
             ]),
         };
-        let client2 = Account {
+        let client65534 = Account {
             client: 65534,
             available: dec!(999999999999.9999),
             held: dec!(0),
@@ -367,8 +367,8 @@ mod tests {
             )]),
         };
 
-        assert_eq!(*test_accounts.get(&65535).unwrap(), client1);
-        assert_eq!(*test_accounts.get(&65534).unwrap(), client2);
+        assert_eq!(*test_accounts.get(&65535).unwrap(), client65535);
+        assert_eq!(*test_accounts.get(&65534).unwrap(), client65534);
         Ok(())
     }
 
