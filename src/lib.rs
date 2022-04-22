@@ -1,6 +1,6 @@
 use csv::Error;
 use csv::StringRecord;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -72,7 +72,7 @@ impl Account {
                         data.tx, data.client
                         );
                 } else if value < Decimal::ZERO {
-                    info!(
+                    warn!(
                         "Transaction #{}: Client #{}. Deposit amount is not positive. Transaction is ignored.",
                         data.tx, data.client
                         );
@@ -101,7 +101,7 @@ impl Account {
                     }
                 }
             },
-            None => info!(
+            None => warn!(
                 "transaction #{}: Client #{}. Deposit amount is not a valid Decimal number. Transaction is ignored.",
                 data.tx, data.client
                 ),
@@ -117,7 +117,7 @@ impl Account {
                         data.tx, data.client
                         );
                 } else if value < Decimal::ZERO {
-                    info!(
+                    warn!(
                         "Transaction #{}: Client #{}. Withdrawl amount is not positive. Transaction is ignored.",
                         data.tx, data.client
                         );
@@ -137,7 +137,7 @@ impl Account {
                     }
                 }
             },
-            None => info!(
+            None => warn!(
                 "transaction #{}: Client #{}. Withdrawl amount is not a valid Decimal number. Transaction is ignored.",
                 data.tx, data.client
                 ),
@@ -168,7 +168,7 @@ impl Account {
                 }
             },
 
-            None => info!(
+            None => warn!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this dispute. Either the tx specified by the dispute doesn't exist or the specified tx is not a deposit. This dispute request is ignored.",
                 data.tx, data.client),
         }
@@ -194,13 +194,13 @@ impl Account {
                         deposited.state = DepositState::NotDisputed;
                     },
                     DepositState::NotDisputed =>
-                        info!(
+                        debug!(
                             "Transaction #{}: Client #{}. Transaction is not under dispute. This resolve request is ignored.",
                             data.tx, data.client
                             ),
                 }
             },
-            None => info!(
+            None => warn!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this resolve. Either the tx specified by the resolve doesn't exist or the specified tx is not a deposit. This resolve request is ignored.",
                 data.tx, data.client),
         }
@@ -227,13 +227,13 @@ impl Account {
                         self.locked = true;
                     },
                     DepositState::NotDisputed =>
-                        info!(
+                        debug!(
                             "Transaction #{}: Client #{}. Transaction is not under dispute. This chargeback request is ignored.",
                             data.tx, data.client
                             ),
                 }
             },
-            None => info!(
+            None => warn!(
                 "transaction #{}: Client #{}. Cannot find the deposit transaction related to this chargeback. Either the tx specified by the chargeback doesn't exist or the specified tx is not a deposit. This chargeback request is ignored.",
                 data.tx, data.client),
         }
@@ -246,7 +246,7 @@ impl Account {
             "dispute" => self.dispute(data),
             "resolve" => self.resolve(data),
             "chargeback" => self.chargeback(data),
-            _ => info!(
+            _ => warn!(
                 "transaction #{}: Client #{}. Transaction type is not specified. This transaction is ignored.",
                 data.tx, data.client
                 ),
@@ -258,7 +258,7 @@ pub fn process_records<R: io::Read>(rdr: R) -> Result<HashMap<u16, Account>, Err
     let mut reader = csv::Reader::from_reader(rdr);
 
     // trim whitespaces in headers
-    let headers = reader.headers().unwrap();
+    let headers = reader.headers()?;
     let mut headers_trimmed = StringRecord::new();
     for i in headers {
         headers_trimmed.push_field(i.trim());
