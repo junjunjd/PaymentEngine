@@ -12,19 +12,24 @@ Errors are return to the caller of `process_records` function.
 ### Input
 The input is a CSV file with the columns type, client, tx, and amount, where the type is a string, the client column is a valid u16 client ID, the tx is a valid u32 transaction ID, and the amount is a decimal value with a precision of up to four places past the decimal. 
 <br />
+<br />
 All whitespaces within a string are accepted by the engine, including leading and trailing whitespaces and whitespaces appeared in a string.
 
 ### Decimal amount
 The engine uses the Decimal type defined by the crate rust-decimal. 
+<br />
 <br />
 If the input decimal amount has a scale larger than 4, the engine will rescale the scaling factor to 4 using the MidpointAwayFromZero strategy. 
 
 ### Transaction ID
 Transaction IDs (tx) are globally unique and transactions occur chronologically in the input file. 
 <br />
+<br />
 The engine uses a HashSet to keep track of transaction IDs that has already been processed. If a transaction ID already exist in the processed tx HashSet, the transaction is ignored. 
 <br />
+<br />
 Transactions ignored and not processed are not added to the HashSet. Thus, if a tx contains invalid decimal amount and thus is ignored, the tx ID is not added to the HashSet. A new tx with the same ID and a valid decimal amount will still be processed.
+<br />
 <br />
 When a disbute, resolve or chargeback occurs, the engine will only search for the corresponding ID occured in previous transactions.
 
