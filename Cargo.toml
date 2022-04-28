@@ -23,7 +23,8 @@ csv = "1"
 log = "0"
 env_logger = "0"
 clap = "2"
-rust_decimal = "1"
+thiserror = "1"
+rust_decimal = { version = "1", features = ["serde-bincode"] }
 rust_decimal_macros = "1"
 serde = { version = "1", features = ["derive"] }
 
