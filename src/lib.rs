@@ -44,9 +44,6 @@ pub enum EngineError {
 
     #[error("Duplicate column `type`")]
     DuplicateColumnType,
-
-    #[error("Unexpected column name")]
-    UnexpectedColumnName,
 }
 
 pub struct ColumnIndex {
@@ -430,7 +427,7 @@ pub fn process_records<R: io::Read>(rdr: R) -> Result<HashMap<u16, Account>, Eng
                 column_index.check_duplicate_amount()?;
                 column_index.amount = idx;
             }
-            _ => return Err(EngineError::UnexpectedColumnName),
+            _ => error!("Unexpected column name: {}", header),
         }
     }
     column_index.check_missing()?; // check if type, client, tx and amount columns do exist in the input csv data
