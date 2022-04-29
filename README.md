@@ -19,10 +19,10 @@ All whitespaces within a string are accepted by the engine, including leading an
 The engine uses the Decimal type defined by the crate rust-decimal. 
 <br />
 <br />
+Potential loss of precision may occur and the decimal crate may not catch addition overflow when adding a very large number to a very small number. See [this issue](https://github.com/paupino/rust-decimal/issues/511) I've created. The engine assumes that the amounts are not extremely large so that such loss of precision will not occur. 
+<br />
+<br />
 If the input decimal amount has a scale larger than 4, the engine will rescale the scaling factor to 4 using the MidpointAwayFromZero strategy. 
-<br />
-<br />
-Potential loss of precision may occur and the crate may not catch addition overflow when adding a very large number to a very small number. See [this issue](https://github.com/paupino/rust-decimal/issues/511) I've created. The engine assumes that the amounts are not extremely large so that such loss of precision will not occur. 
 
 ### Transaction ID
 Transaction IDs (tx) are globally unique and transactions occur chronologically in the input file. 
