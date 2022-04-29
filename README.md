@@ -25,13 +25,13 @@ Potential loss of precision may occur and the decimal crate may not catch additi
 If the input decimal amount has a scale larger than 4, the engine will rescale the scaling factor to 4 using the MidpointAwayFromZero strategy. 
 
 ### Transaction ID
-Transaction IDs (tx) are globally unique and transactions occur chronologically in the input file. 
+Transaction IDs (tx) are assumed to be globally unique and transactions occur chronologically in the input file. 
 <br />
 <br />
-The engine uses a HashSet to keep track of transaction IDs that has already been processed. If a transaction ID already exist in the processed tx HashSet, the transaction is ignored. 
+The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. If a transaction ID has already appeared, the transaction is ignored. 
 <br />
 <br />
-Transactions ignored and not processed are not added to the HashSet. Thus, if a tx contains invalid decimal amount and thus is ignored, the tx ID is not added to the HashSet. A new tx with the same ID and a valid decimal amount will still be processed.
+This is a pretty strong assumption that any transaction with an ID that has appeared before will be ignored by the engine. So in an edge case, if a deposit tx has an empty string in amount, the tx is ignored but the tx ID will still be added to the tx HashSet. A subsequent deposit tx with the same ID and a valid decimal amount will be ignored due to duplicate ID.
 <br />
 <br />
 When a disbute, resolve or chargeback occurs, the engine will only search for the corresponding ID occured in previous transactions.
