@@ -28,6 +28,7 @@ If the input decimal amount has a scale larger than 4, the engine will rescale t
 Transaction IDs (tx) are assumed to be globally unique and transactions occur chronologically in the input file. 
 <br />
 <br />
+#### Duplicate ID assumption update:
 The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. If a transaction ID has already appeared, the transaction is ignored. 
 <br />
 <br />
