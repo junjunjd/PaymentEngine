@@ -32,8 +32,6 @@ dispute,2,3,
 dispute,2,20,
 chargeback,3,3,
 withdrawl,3,15,1
-deposit,3,8,
-deposit,3,8,*
 deposit,3,8,1000
 deposit,1,6,1
 withdrawl,1,7,1

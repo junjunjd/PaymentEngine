@@ -168,8 +168,8 @@ impl Account {
 
     pub fn deposit(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
         // Transaction IDs are assumed to be globally unique. If a duplicate tx appears, the transaction is ignored.
-        // tx_set only keeps track of transactions that's been processed. Transactions ignored are not added to tx_set.
-        // Thus, if a tx contains invalid decimal amount and thus is ignored, the tx ID is not added to tx_set. A new tx with the same ID and a valid decimal amount will still be processed.
+        // We are making a strong assumption: if a deposit tx has an invalid decimal amount such as an empty string, it is ignored but the tx ID will still be added to tx_set.
+        // If there is a subsequent new deposit tx with the same ID and a valid decimal amount, this deposit will be ignored due to duplicate tx ID.
         if tx_set.contains(&data.tx) {
             error!(
                 "{:?} Transaction ID is not unique. This transaction is ignored.",
@@ -177,6 +177,7 @@ impl Account {
             );
             return;
         }
+        tx_set.insert(data.tx);
         if let Some(amount) = data.amount {
             if self.locked {
                 info!("{:?} Account is locked. Deposit failed.", data);
@@ -198,7 +199,6 @@ impl Account {
                     self.total = total_new;
                     self.available = available_new;
                     self.deposited.insert(data.tx, Deposit::new(deposit_amount));
-                    tx_set.insert(data.tx); // tx_set only keeps track of transactions that's been processed. Transactions ignored are not added to tx_set.
                     return;
                 }
             }
@@ -216,8 +216,8 @@ impl Account {
 
     pub fn withdrawl(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
         // Transaction IDs are assumed to be globally unique. If a duplicate tx appears, the transaction is ignored.
-        // tx_set only keeps track of transactions that's been processed. Transactions ignored are not added to tx_set.
-        // Thus, if a tx contains invalid decimal amount and thus is ignored, the tx ID is not added to tx_set. A new tx with the same ID and a valid decimal amount will still be processed.
+        // We are making a strong assumption: if a deposit tx has an invalid decimal amount such as an empty string, it is ignored but the tx ID will still be added to tx_set.
+        // If there is a subsequent new deposit tx with the same ID and a valid decimal amount, this deposit will be ignored due to duplicate tx ID.
         if tx_set.contains(&data.tx) {
             error!(
                 "{:?} Transaction ID is not unique. This transaction is ignored.",
@@ -225,6 +225,7 @@ impl Account {
             );
             return;
         }
+        tx_set.insert(data.tx);
         if let Some(amount) = data.amount {
             if self.locked {
                 info!("{:?} Account is locked. Withdrawl failed.", data);
@@ -253,7 +254,6 @@ impl Account {
                     // Available and total will only be updated if overflow does not occur in both operations.
                     self.total = total_new;
                     self.available = available_new;
-                    tx_set.insert(data.tx); // tx_set only keeps track of transactions that's been processed. Transactions ignored are not added to tx_set.
                     return;
                 }
             }
