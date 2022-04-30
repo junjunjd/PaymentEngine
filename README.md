@@ -9,7 +9,7 @@ There is no use of unsafe code so Rust complier gaurantees type safety. CSV rows
 Errors are return to the caller of `process_records` function.
 
 ## Assumptions
-### Assumption updated regarding duplicate IDs**
+### Assumption updated regarding duplicate IDs
 **The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. Transaction IDs (tx) are assumed to be globally unique. If a transaction ID has already appeared, the transaction is ignored. 
 <br />
 <br />
