@@ -9,6 +9,14 @@ There is no use of unsafe code so Rust complier gaurantees type safety. CSV rows
 Errors are return to the caller of `process_records` function.
 
 ## Assumptions
+### Assumption updated regarding duplicate IDs**
+**The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. Transaction IDs (tx) are assumed to be globally unique. If a transaction ID has already appeared, the transaction is ignored. 
+<br />
+<br />
+This is a pretty strong assumption that any transaction with an ID that has appeared before will be ignored by the engine. So in an edge case, if a deposit tx has an empty string in amount, the tx is ignored but the tx ID will still be inserted to the tx HashSet. A subsequent deposit tx with the same ID and a valid decimal amount will be ignored due to duplicate ID. tx IDs are assumed to be globally unqiue. If an ID appeared more than once in the input CSV, we assume that there is a duplicate data entry issue or there is an error on the bank's side. 
+<br />
+<br />
+**
 ### Input
 The input is a CSV file with the columns type, client, tx, and amount, where the type is a string, the client column is a valid u16 client ID, the tx is a valid u32 transaction ID, and the amount is a decimal value with a precision of up to four places past the decimal. 
 <br />
@@ -28,13 +36,7 @@ If the input decimal amount has a scale larger than 4, the engine will rescale t
 Transaction IDs (tx) are assumed to be globally unique and transactions occur chronologically in the input file. 
 <br />
 <br />
-#### **Assumption updated regarding duplicate IDs**
-The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. If a transaction ID has already appeared, the transaction is ignored. 
-<br />
-<br />
-This is a pretty strong assumption that any transaction with an ID that has appeared before will be ignored by the engine. So in an edge case, if a deposit tx has an empty string in amount, the tx is ignored but the tx ID will still be added to the tx HashSet. A subsequent deposit tx with the same ID and a valid decimal amount will be ignored due to duplicate ID.
-<br />
-<br />
+
 When a disbute, resolve or chargeback occurs, the engine will only search for the corresponding ID occured in previous transactions.
 
 ### Locked account
