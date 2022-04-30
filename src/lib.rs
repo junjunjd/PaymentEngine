@@ -216,8 +216,8 @@ impl Account {
 
     pub fn withdrawl(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
         // Transaction IDs are assumed to be globally unique. If a duplicate tx appears, the transaction is ignored.
-        // We are making a strong assumption: if a deposit tx has an invalid decimal amount such as an empty string, it is ignored but the tx ID will still be added to tx_set.
-        // If there is a subsequent new deposit tx with the same ID and a valid decimal amount, this deposit will be ignored due to duplicate tx ID.
+        // We are making a strong assumption: if a wihdrawl tx has an invalid decimal amount such as an empty string, it is ignored but the tx ID will still be added to tx_set.
+        // If there is a subsequent new wihdrawl tx with the same ID and a valid decimal amount, this deposit will be ignored due to duplicate tx ID.
         if tx_set.contains(&data.tx) {
             error!(
                 "{:?} Transaction ID is not unique. This transaction is ignored.",
