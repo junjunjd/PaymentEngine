@@ -214,7 +214,7 @@ impl Account {
         );
     }
 
-    pub fn withdrawl(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
+    pub fn withdrawal(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
         // Transaction IDs are assumed to be globally unique. If a duplicate tx appears, the transaction is ignored.
         // We are making a strong assumption: if a wihdrawl tx has an invalid decimal amount such as an empty string, it is ignored but the tx ID will still be added to tx_set.
         // If there is a subsequent new wihdrawl tx with the same ID and a valid decimal amount, this deposit will be ignored due to duplicate tx ID.
@@ -228,29 +228,29 @@ impl Account {
         tx_set.insert(data.tx);
         if let Some(amount) = data.amount {
             if self.locked {
-                info!("{:?} Account is locked. Withdrawl failed.", data);
+                info!("{:?} Account is locked. withdrawal failed.", data);
                 return;
             }
             if amount < Decimal::ZERO {
                 warn!(
-                    "{:?} Withdrawl amount is not positive. This transaction is ignored.",
+                    "{:?} withdrawal amount is not positive. This transaction is ignored.",
                     data
                 );
                 return;
             }
-            let mut withdrawl_amount: Decimal = amount;
+            let mut withdrawal_amount: Decimal = amount;
             // Amount is assumed to have a precision of up to four places.
             // In case the input amount has a scale larger than 4, we rescale the scaling factor to 4.
-            withdrawl_amount.rescale(4);
-            if self.available < withdrawl_amount {
+            withdrawal_amount.rescale(4);
+            if self.available < withdrawal_amount {
                 info!(
-                    "{:?} Available funds are not sufficient. Withdrawl failed.",
+                    "{:?} Available funds are not sufficient. withdrawal failed.",
                     data
                 );
                 return;
             }
-            if let Some(total_new) = self.total.checked_sub(withdrawl_amount) {
-                if let Some(available_new) = self.available.checked_sub(withdrawl_amount) {
+            if let Some(total_new) = self.total.checked_sub(withdrawal_amount) {
+                if let Some(available_new) = self.available.checked_sub(withdrawal_amount) {
                     // Available and total will only be updated if overflow does not occur in both operations.
                     self.total = total_new;
                     self.available = available_new;
@@ -258,13 +258,13 @@ impl Account {
                 }
             }
             error!(
-                "{:?} Amount would overflow. This withdrawl is not processed.",
+                "{:?} Amount would overflow. This withdrawal is not processed.",
                 data
             );
             return;
         }
         warn!(
-            "{:?} Withdrawl amount is not a valid Decimal number. Transaction is ignored.",
+            "{:?} withdrawal amount is not a valid Decimal number. Transaction is ignored.",
             data
         );
     }
@@ -384,7 +384,7 @@ impl Account {
     pub fn update(&mut self, data: &Transaction, tx_set: &mut HashSet<u32>) {
         match data.r#type.as_str() {
             "deposit" => self.deposit(data, tx_set),
-            "withdrawl" => self.withdrawl(data, tx_set),
+            "withdrawal" => self.withdrawal(data, tx_set),
             "dispute" => self.dispute(data),
             "resolve" => self.resolve(data),
             "chargeback" => self.chargeback(data),
@@ -514,8 +514,8 @@ mod tests {
     }
 
     #[test]
-    fn test_withdrawl() -> Result<(), EngineError> {
-        let test_file_path = "test_withdrawl.csv";
+    fn test_withdrawal() -> Result<(), EngineError> {
+        let test_file_path = "test_withdrawal.csv";
         let test_rdr = File::open(test_file_path)?;
         let test_accounts = process_records(test_rdr)?;
         let client65535 = Account {
