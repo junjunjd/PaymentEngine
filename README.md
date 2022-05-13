@@ -10,13 +10,13 @@ Errors are return to the caller of `process_records` function.
 
 ## Assumptions
 ### Assumption updated regarding duplicate IDs
-**The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. Transaction IDs (tx) are assumed to be globally unique. If a transaction ID has already appeared, the transaction is ignored. 
+The engine uses a tx HashSet to keep track of transaction IDs that has already appeared. Transaction IDs (tx) are assumed to be globally unique. If a transaction ID has already appeared, the transaction is ignored. 
 <br />
 <br />
 This is a pretty strong assumption that any transaction with an ID that has appeared before will be ignored by the engine. So in an edge case, if a deposit tx has an empty string in amount, the tx is ignored but the tx ID will still be inserted to the tx HashSet. A subsequent deposit tx with the same ID and a valid decimal amount will be ignored due to duplicate ID. tx IDs are assumed to be globally unqiue. If an ID appeared more than once in the input CSV, we assume that there is a duplicate data entry issue or there is an error on the bank's side. 
 <br />
 <br />
-**
+
 ### Input
 The input is a CSV file with the columns type, client, tx, and amount, where the type is a string, the client column is a valid u16 client ID, the tx is a valid u32 transaction ID, and the amount is a decimal value with a precision of up to four places past the decimal. 
 <br />
@@ -40,7 +40,7 @@ Transaction IDs (tx) are assumed to be globally unique and transactions occur ch
 When a disbute, resolve or chargeback occurs, the engine will only search for the corresponding ID occured in previous transactions.
 
 ### Locked account
-Once an account's been locked, no deposit or withdrawl can be made to the account.
+Once an account's been locked, no deposit or withdrawal can be made to the account.
 
 ### Dispute, resolve and chargeback
 
